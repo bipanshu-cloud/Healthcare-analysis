@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MedIQ — Healthcare Patient Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Figtree:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg:       #f0f4f8;
+  --surface:  #ffffff;
+  --surface2: #f7fafc;
+  --border:   #e2eaf2;
+  --text:     #1a2433;
+  --muted:    #7a8fa6;
+  --accent:   #0066ff;
+  --teal:     #00b4a0;
+  --red:      #e8274b;
+  --amber:    #f59e0b;
+  --green:    #10b981;
+  --purple:   #7c3aed;
+  --shadow:   0 2px 16px rgba(0,60,120,0.08);
+  --shadow-lg:0 8px 32px rgba(0,60,120,0.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Figtree', sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 36px;
+  display: flex; align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 1px 8px rgba(0,60,120,0.06);
+}
+.logo {
+  font-family: 'Instrument Serif', serif;
+  font-size: 24px; letter-spacing: -0.5px;
+  color: var(--text);
+}
+.logo span { color: var(--accent); font-style: italic; }
+.header-meta {
+  display: flex; align-items: center; gap: 20px;
+}
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.5px;
+}
+.badge-blue  { background: #e8f0ff; color: var(--accent); }
+.badge-green { background: #e6f7f3; color: var(--green); }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: blink 1.8s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── LAYOUT ── */
+.container { padding: 28px 36px; max-width: 1600px; margin: 0 auto; }
+
+.section-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 500;
+  letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 16px;
+  padding-left: 12px;
+  border-left: 3px solid var(--accent);
+}
+
+/* ── KPI CARDS ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px; margin-bottom: 24px;
+}
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s, box-shadow 0.15s;
+  animation: rise 0.5s ease both;
+  position: relative; overflow: hidden;
+}
+.kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.kpi::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 3px;
+  border-radius: 14px 14px 0 0;
+}
+.kpi.blue::before   { background: var(--accent); }
+.kpi.teal::before   { background: var(--teal); }
+.kpi.red::before    { background: var(--red); }
+.kpi.amber::before  { background: var(--amber); }
+.kpi.green::before  { background: var(--green); }
+.kpi.purple::before { background: var(--purple); }
+.kpi.slate::before  { background: #64748b; }
+.kpi.pink::before   { background: #ec4899; }
+
+.kpi-icon {
+  font-size: 20px; margin-bottom: 10px;
+  display: block;
+}
+.kpi-label {
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 1px;
+  color: var(--muted); margin-bottom: 6px;
+}
+.kpi-value {
+  font-family: 'Instrument Serif', serif;
+  font-size: 32px; line-height: 1;
+  color: var(--text); margin-bottom: 6px;
+}
+.kpi-sub { font-size: 11px; color: var(--muted); }
+.kpi-sub .up   { color: var(--red); font-weight: 600; }
+.kpi-sub .good { color: var(--green); font-weight: 600; }
+
+/* ── CHART CARDS ── */
+.row { display: grid; gap: 14px; margin-bottom: 14px; }
+.row-3   { grid-template-columns: 2fr 1fr 1fr; }
+.row-2   { grid-template-columns: 1fr 1fr; }
+.row-2r  { grid-template-columns: 3fr 2fr; }
+.row-2l  { grid-template-columns: 2fr 3fr; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: var(--shadow);
+  animation: rise 0.5s ease both;
+}
+.card-head { margin-bottom: 4px; }
+.card-title {
+  font-family: 'Figtree', sans-serif;
+  font-size: 15px; font-weight: 700;
+  color: var(--text);
+}
+.card-sub {
+  font-size: 11px; color: var(--muted);
+  margin-bottom: 18px;
+}
+canvas { max-height: 230px; }
+
+/* ── TABLE ── */
+.tbl-wrap { overflow-x: auto; margin-top: 2px; }
+table { width: 100%; border-collapse: collapse; }
+thead tr { border-bottom: 2px solid var(--border); }
+th {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--muted);
+  text-align: left; padding: 8px 10px; font-weight: 500;
+}
+td { padding: 10px 10px; font-size: 12px; border-bottom: 1px solid var(--bg); }
+tr:hover td { background: var(--surface2); }
+tr:last-child td { border-bottom: none; }
+
+.tag {
+  display: inline-block; padding: 2px 7px;
+  border-radius: 4px; font-size: 10px; font-weight: 600;
+}
+.tag-red    { background:#fde8ec; color:#c0152a; }
+.tag-amber  { background:#fef3c7; color:#b45309; }
+.tag-green  { background:#d1fae5; color:#065f46; }
+.tag-blue   { background:#dbeafe; color:#1d4ed8; }
+.tag-purple { background:#ede9fe; color:#5b21b6; }
+
+.sev-bar {
+  display: inline-flex; gap: 2px;
+}
+.sev-dot {
+  width: 8px; height: 8px; border-radius: 2px;
+  background: var(--border);
+}
+.sev-dot.fill-1 { background:#10b981; }
+.sev-dot.fill-2 { background:#84cc16; }
+.sev-dot.fill-3 { background:#f59e0b; }
+.sev-dot.fill-4 { background:#f97316; }
+.sev-dot.fill-5 { background:#e8274b; }
+
+/* ── INSIGHT CALLOUT ── */
+.insights {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 12px; margin-bottom: 24px;
+}
+.insight {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex; align-items: flex-start; gap: 12px;
+  box-shadow: var(--shadow);
+}
+.insight-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.insight-num {
+  font-family: 'Instrument Serif', serif;
+  font-size: 22px; line-height: 1; color: var(--text);
+}
+.insight-label { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+/* ── FOOTER ── */
+footer {
+  text-align: center; padding: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--muted);
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1100px) {
+  .kpi-grid { grid-template-columns: repeat(2,1fr); }
+  .row-3,.row-2r,.row-2l { grid-template-columns: 1fr; }
+  .insights { grid-template-columns: repeat(2,1fr); }
+}
+@media(max-width:680px) {
+  .container { padding: 14px; }
+  header { padding: 0 16px; }
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+  .row-2 { grid-template-columns: 1fr; }
+  .insights { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Med<span>IQ</span></div>
+  <div class="header-meta">
+    <span class="badge badge-blue">1,500 PATIENTS</span>
+    <span class="badge badge-blue">JAN 2022 — JUN 2024</span>
+    <span class="badge badge-green"><span class="dot"></span> LIVE</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- KPIs -->
+  <div class="section-title">Key Performance Indicators</div>
+  <div class="kpi-grid">
+    <div class="kpi blue">
+      <span class="kpi-icon">🏥</span>
+      <div class="kpi-label">Total Patients</div>
+      <div class="kpi-value">1,500</div>
+      <div class="kpi-sub">Jan 2022 – Jun 2024</div>
+    </div>
+    <div class="kpi teal">
+      <span class="kpi-icon">💰</span>
+      <div class="kpi-label">Total Cost</div>
+      <div class="kpi-value">$29.2M</div>
+      <div class="kpi-sub">Avg $19,495 / patient</div>
+    </div>
+    <div class="kpi amber">
+      <span class="kpi-icon">🔁</span>
+      <div class="kpi-label">Readmission Rate</div>
+      <div class="kpi-value">20.0%</div>
+      <div class="kpi-sub"><span class="up">↑ High</span> — Ortho worst at 25.1%</div>
+    </div>
+    <div class="kpi green">
+      <span class="kpi-icon">📅</span>
+      <div class="kpi-label">Avg Length of Stay</div>
+      <div class="kpi-value">4.4d</div>
+      <div class="kpi-sub">Oncology highest at 6.7d</div>
+    </div>
+    <div class="kpi red">
+      <span class="kpi-icon">💔</span>
+      <div class="kpi-label">Mortality Rate</div>
+      <div class="kpi-value">4.6%</div>
+      <div class="kpi-sub"><span class="up">69 patients expired</span></div>
+    </div>
+    <div class="kpi purple">
+      <span class="kpi-icon">🚨</span>
+      <div class="kpi-label">Emergency Admits</div>
+      <div class="kpi-value">42.2%</div>
+      <div class="kpi-sub">633 unplanned admissions</div>
+    </div>
+    <div class="kpi slate">
+      <span class="kpi-icon">⭐</span>
+      <div class="kpi-label">Avg Satisfaction</div>
+      <div class="kpi-value">3.52</div>
+      <div class="kpi-sub"><span class="good">/ 5.0</span> — Room to improve</div>
+    </div>
+    <div class="kpi pink">
+      <span class="kpi-icon">💳</span>
+      <div class="kpi-label">Self-Pay Patients</div>
+      <div class="kpi-value">152</div>
+      <div class="kpi-sub">$0 insurance coverage</div>
+    </div>
+  </div>
+
+  <!-- Insights Row -->
+  <div class="section-title">Clinical Insights</div>
+  <div class="insights">
+    <div class="insight">
+      <div class="insight-icon" style="background:#e8f0ff">🦴</div>
+      <div>
+        <div class="insight-num">25.1%</div>
+        <div class="insight-label">Orthopedics readmission rate — highest dept</div>
+      </div>
+    </div>
+    <div class="insight">
+      <div class="insight-icon" style="background:#fff3e0">💊</div>
+      <div>
+        <div class="insight-num">56 cases</div>
+        <div class="insight-label">Hypertension — most common diagnosis</div>
+      </div>
+    </div>
+    <div class="insight">
+      <div class="insight-icon" style="background:#fde8ec">⚠️</div>
+      <div>
+        <div class="insight-num">8.0%</div>
+        <div class="insight-label">Mortality rate for 65+ age group</div>
+      </div>
+    </div>
+    <div class="insight">
+      <div class="insight-icon" style="background:#e6f7f3">🎗️</div>
+      <div>
+        <div class="insight-num">$5.9M</div>
+        <div class="insight-label">Oncology total cost — most expensive dept</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 1: Monthly Trend + Department Donut + Admission Types -->
+  <div class="section-title">Admissions & Trends</div>
+  <div class="row row-3">
+    <div class="card">
+      <div class="card-title">Monthly Admissions & Avg Cost</div>
+      <div class="card-sub">30-month trend across 2022–2024</div>
+      <canvas id="monthlyChart"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Admissions by Department</div>
+      <div class="card-sub">Patient volume share</div>
+      <canvas id="deptDonut" style="max-height:190px"></canvas>
+      <div id="deptLegend" style="margin-top:12px;display:flex;flex-direction:column;gap:5px;font-size:11px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Admission Types</div>
+      <div class="card-sub">Planned vs unplanned</div>
+      <canvas id="admitTypeChart" style="max-height:190px"></canvas>
+    </div>
+  </div>
+
+  <!-- Row 2: Readmission + Insurance -->
+  <div class="row row-2">
+    <div class="card">
+      <div class="card-title">Readmission Rate by Department</div>
+      <div class="card-sub">% patients readmitted within period</div>
+      <canvas id="readmitChart"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Insurance Type & Patient Cost Burden</div>
+      <div class="card-sub">Coverage gap per patient on average</div>
+      <canvas id="insuranceChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Row 3: Age Group + Severity -->
+  <div class="row row-2l">
+    <div class="card">
+      <div class="card-title">Age Group Health Outcomes</div>
+      <div class="card-sub">Readmission % and mortality % by age bracket</div>
+      <canvas id="ageChart"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Severity Score Distribution</div>
+      <div class="card-sub">Patient count by clinical severity level</div>
+      <canvas id="severityChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Row 4: Top Diagnoses Table + Quarterly -->
+  <div class="section-title">Diagnosis & Cost Analysis</div>
+  <div class="row row-2r">
+    <div class="card">
+      <div class="card-title">Top 15 Diagnoses</div>
+      <div class="card-sub">By cases, avg cost, readmission rate & mortality</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Diagnosis</th>
+              <th>Cases</th>
+              <th>Avg Cost</th>
+              <th>LOS</th>
+              <th>Readmit%</th>
+              <th>Severity</th>
+              <th>Mort%</th>
+            </tr>
+          </thead>
+          <tbody id="diagTable"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Quarterly Cost Trend</div>
+      <div class="card-sub">Total hospital costs per quarter</div>
+      <canvas id="quarterlyChart"></canvas>
+      <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="background:var(--bg);border-radius:10px;padding:12px">
+          <div style="font-size:18px;font-family:'Instrument Serif',serif">$3.3M</div>
+          <div style="font-size:10px;color:var(--muted)">Peak quarter (Q4 2022)</div>
+        </div>
+        <div style="background:var(--bg);border-radius:10px;padding:12px">
+          <div style="font-size:18px;font-family:'Instrument Serif',serif">10</div>
+          <div style="font-size:10px;color:var(--muted)">Quarters analyzed</div>
+        </div>
+        <div style="background:var(--bg);border-radius:10px;padding:12px">
+          <div style="font-size:18px;font-family:'Instrument Serif',serif">$19K</div>
+          <div style="font-size:10px;color:var(--muted)">Consistent avg cost</div>
+        </div>
+        <div style="background:var(--bg);border-radius:10px;padding:12px">
+          <div style="font-size:18px;font-family:'Instrument Serif',serif">8</div>
+          <div style="font-size:10px;color:var(--muted)">Departments tracked</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>MedIQ Healthcare Analytics · Portfolio Project · 1,500 Patient Records · Jan 2022 – Jun 2024 · Python · SQL · Chart.js</footer>
+
+<script>
+// ── CHART DEFAULTS ───────────────────────────────────────────
+Chart.defaults.color = '#7a8fa6';
+Chart.defaults.font.family = 'Figtree';
+const GRID  = { color: '#eef2f7', drawBorder: false };
+const TIP   = {
+  backgroundColor: '#1a2433', titleColor: '#f0f4f8',
+  bodyColor: '#a0b0c0', padding: 10,
+  borderColor: '#2d3f55', borderWidth: 1, cornerRadius: 8
+};
+
+// ── DATA ─────────────────────────────────────────────────────
+const MONTHS = ['Jan22','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
+                'Jan23','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
+                'Jan24','Feb','Mar','Apr','May','Jun'];
+const ADMIT_CNT  = [62,42,38,44,51,60,55,47,51,47,46,59,49,56,40,54,62,59,44,55,46,55,59,51,52,42,52,33,42,47];
+const AVG_COST   = [16656,20462,17896,19006,19252,19100,20313,18809,19315,20590,22138,21601,
+                    21497,19661,19680,16907,19160,20283,23090,16623,18041,19354,20790,19613,
+                    19793,18900,18125,20722,18037,20458];
+
+const DEPTS       = ['Cardiology','Orthopedics','Neurology','Pulmonology','Oncology','Infectious Dis.','Endocrinology','Gastroenterology'];
+const DEPT_CNT    = [243,191,203,194,185,184,168,132];
+const DEPT_COLORS = ['#0066ff','#00b4a0','#7c3aed','#f59e0b','#e8274b','#10b981','#ec4899','#64748b'];
+
+const READMIT_RATE= [25.1,25.0,23.0,21.1,19.7,16.2,15.8,13.6];
+const READMIT_DEP = ['Orthopedics','Endocrinology','Cardiology','Pulmonology','Gastroenterology','Oncology','Neurology','Infectious Dis.'];
+
+const INS_LABELS  = ['Private','Medicare','Medicaid','Government','Self-Pay'];
+const INS_COVERED = [15333,14740,12531,16633,0];
+const INS_PAID    = [3833,4913,6747,2935,20332];
+
+const AGE_GROUPS  = ['0-17','18-35','36-50','51-65','65+'];
+const AGE_READMIT = [26.7,13.5,20.7,19.7,23.5];
+const AGE_MORT    = [0.0,1.6,4.3,3.6,8.0];
+
+const SEV_LABELS  = ['1-Mild','2-Moderate','3-Serious','4-Severe','5-Critical'];
+const SEV_CNT     = [148,374,533,280,165];
+const SEV_COLORS  = ['#10b981','#84cc16','#f59e0b','#f97316','#e8274b'];
+
+const Q_LABELS = ['Q1 22','Q2 22','Q3 22','Q4 22','Q1 23','Q2 23','Q3 23','Q4 23','Q1 24','Q2 24'];
+const Q_COST   = [2572115,2964132,2986321,3260557,2941578,3297588,2760151,3291291,2765581,2402913];
+
+const DIAG = [
+  {d:'Hypertension',   c:56,  cost:24826, los:5.7, r:23.2, sev:3.0, m:1.8},
+  {d:'Arrhythmia',     c:54,  cost:23279, los:5.1, r:22.2, sev:3.0, m:7.4},
+  {d:'Stroke',         c:50,  cost:21581, los:5.0, r:22.0, sev:3.0, m:14.0},
+  {d:"Parkinson's",    c:48,  cost:17150, los:3.6, r:16.7, sev:2.8, m:10.4},
+  {d:'Epilepsy',       c:47,  cost:15439, los:3.3, r:12.8, sev:2.6, m:4.3},
+  {d:'Hip Fracture',   c:46,  cost:23436, los:3.4, r:37.0, sev:2.8, m:2.2},
+  {d:'Cellulitis',     c:43,  cost:17305, los:6.0, r:20.9, sev:2.8, m:0.0},
+  {d:'Asthma',         c:43,  cost:17341, los:4.3, r:25.6, sev:2.9, m:2.3},
+  {d:'Bronchitis',     c:43,  cost:17752, los:4.3, r:18.6, sev:2.9, m:2.3},
+  {d:'Knee Replace.',  c:42,  cost:24536, los:3.4, r:26.2, sev:2.9, m:7.1},
+  {d:'Breast Cancer',  c:42,  cost:33447, los:7.0, r:11.9, sev:3.0, m:4.8},
+  {d:'Sepsis',         c:42,  cost:16807, los:5.9, r:16.7, sev:2.9, m:2.4},
+  {d:'Heart Attack',   c:42,  cost:18834, los:4.2, r:19.0, sev:3.0, m:2.4},
+  {d:'COPD',           c:41,  cost:17523, los:4.5, r:29.3, sev:3.0, m:7.3},
+  {d:'Heart Failure',  c:41,  cost:22911, los:5.0, r:29.3, sev:3.1, m:7.3},
+];
+
+// ── 1. MONTHLY CHART ────────────────────────────────────────
+new Chart(document.getElementById('monthlyChart'), {
+  type: 'bar',
+  data: {
+    labels: MONTHS,
+    datasets: [
+      { label: 'Admissions', data: ADMIT_CNT,
+        backgroundColor: (ctx) => ctx.raw > 58 ? '#0066ff' : 'rgba(0,102,255,0.25)',
+        borderRadius: 3, borderSkipped: false, order: 1 },
+      { label: 'Avg Cost ($)', data: AVG_COST,
+        type: 'line', yAxisID: 'y2',
+        borderColor: '#00b4a0', backgroundColor: 'rgba(0,180,160,0.06)',
+        borderWidth: 2, pointRadius: 2, tension: 0.4, fill: true, order: 0 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { position:'top', labels:{ boxWidth:10, font:{size:11} } }, tooltip: TIP },
+    scales: {
+      x: { grid: GRID, ticks: { maxRotation: 60, font:{size:8} } },
+      y: { grid: GRID, position:'left', ticks: { font:{size:10} }, title:{ display:true, text:'Admissions', font:{size:10} } },
+      y2:{ grid:{display:false}, position:'right', ticks:{ callback: v=>'$'+(v/1000).toFixed(0)+'K', font:{size:10} } }
+    }
+  }
+});
+
+// ── 2. DEPT DONUT ────────────────────────────────────────────
+new Chart(document.getElementById('deptDonut'), {
+  type: 'doughnut',
+  data: {
+    labels: DEPTS,
+    datasets: [{ data: DEPT_CNT, backgroundColor: DEPT_COLORS,
+      borderWidth: 2, borderColor: '#fff', hoverOffset: 5 }]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:true, cutout:'68%',
+    plugins:{ legend:{display:false}, tooltip: TIP }
+  }
+});
+// Dept legend
+const dl = document.getElementById('deptLegend');
+DEPTS.forEach((d,i) => {
+  dl.innerHTML += `<div style="display:flex;align-items:center;gap:6px">
+    <div style="width:8px;height:8px;border-radius:2px;background:${DEPT_COLORS[i]};flex-shrink:0"></div>
+    <span style="flex:1">${d}</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${DEPT_CNT[i]}</span>
+  </div>`;
+});
+
+// ── 3. ADMISSION TYPE PIE ─────────────────────────────────────
+new Chart(document.getElementById('admitTypeChart'), {
+  type: 'pie',
+  data: {
+    labels: ['Emergency','Elective','Urgent','Observation'],
+    datasets: [{
+      data: [633, 450, 300, 117],
+      backgroundColor: ['#e8274b','#0066ff','#f59e0b','#10b981'],
+      borderWidth: 2, borderColor: '#fff', hoverOffset: 5
+    }]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:true,
+    plugins:{ legend:{position:'bottom', labels:{boxWidth:10, font:{size:10}}}, tooltip: TIP }
+  }
+});
+
+// ── 4. READMISSION BAR ────────────────────────────────────────
+new Chart(document.getElementById('readmitChart'), {
+  type: 'bar',
+  data: {
+    labels: READMIT_DEP,
+    datasets: [{
+      label: 'Readmission Rate (%)',
+      data: READMIT_RATE,
+      backgroundColor: READMIT_RATE.map(v => v>=24 ? '#e8274b' : v>=20 ? '#f59e0b' : '#10b981'),
+      borderRadius: 6, borderSkipped: false
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive:true, maintainAspectRatio:true,
+    plugins:{ legend:{display:false}, tooltip: TIP },
+    scales: {
+      x: { grid: GRID, ticks:{ callback: v=>v+'%', font:{size:10} }, max: 30 },
+      y: { grid:{display:false} }
+    }
+  }
+});
+
+// ── 5. INSURANCE STACKED ─────────────────────────────────────
+new Chart(document.getElementById('insuranceChart'), {
+  type: 'bar',
+  data: {
+    labels: INS_LABELS,
+    datasets: [
+      { label: 'Insurance Covered', data: INS_COVERED,
+        backgroundColor: '#0066ff', borderRadius: 0, stack: 's1' },
+      { label: 'Patient Pays',      data: INS_PAID,
+        backgroundColor: '#e8274b',
+        borderRadius: { topLeft:4, topRight:4, bottomLeft:0, bottomRight:0 },
+        stack: 's1' }
+    ]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:true,
+    plugins:{ legend:{position:'top', labels:{boxWidth:10, font:{size:11}}}, tooltip: TIP },
+    scales: {
+      x: { grid: GRID, stacked: true },
+      y: { grid: GRID, stacked: true, ticks:{ callback: v=>'$'+(v/1000).toFixed(0)+'K', font:{size:10} } }
+    }
+  }
+});
+
+// ── 6. AGE GROUP CHART ────────────────────────────────────────
+new Chart(document.getElementById('ageChart'), {
+  type: 'bar',
+  data: {
+    labels: AGE_GROUPS,
+    datasets: [
+      { label: 'Readmit %', data: AGE_READMIT,
+        backgroundColor: 'rgba(0,102,255,0.7)', borderRadius: 4, borderSkipped: false },
+      { label: 'Mortality %', data: AGE_MORT,
+        backgroundColor: 'rgba(232,39,75,0.7)', borderRadius: 4, borderSkipped: false }
+    ]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:true,
+    plugins:{ legend:{position:'top', labels:{boxWidth:10, font:{size:11}}}, tooltip: TIP },
+    scales: {
+      x: { grid: GRID },
+      y: { grid: GRID, ticks:{ callback: v=>v+'%', font:{size:10} } }
+    }
+  }
+});
+
+// ── 7. SEVERITY CHART ─────────────────────────────────────────
+new Chart(document.getElementById('severityChart'), {
+  type: 'bar',
+  data: {
+    labels: SEV_LABELS,
+    datasets: [{
+      label: 'Patients',
+      data: SEV_CNT,
+      backgroundColor: SEV_COLORS,
+      borderRadius: 6, borderSkipped: false
+    }]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:true,
+    plugins:{ legend:{display:false}, tooltip: TIP },
+    scales: {
+      x: { grid: GRID },
+      y: { grid: GRID, ticks:{ font:{size:10} } }
+    }
+  }
+});
+
+// ── 8. QUARTERLY LINE ─────────────────────────────────────────
+new Chart(document.getElementById('quarterlyChart'), {
+  type: 'line',
+  data: {
+    labels: Q_LABELS,
+    datasets: [{
+      label: 'Total Cost',
+      data: Q_COST,
+      borderColor: '#0066ff',
+      backgroundColor: 'rgba(0,102,255,0.08)',
+      borderWidth: 2.5, pointRadius: 5,
+      pointBackgroundColor: '#0066ff',
+      tension: 0.4, fill: true
+    }]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:true,
+    plugins:{ legend:{display:false}, tooltip: TIP },
+    scales: {
+      x: { grid: GRID },
+      y: { grid: GRID, ticks:{ callback: v=>'$'+(v/1000000).toFixed(2)+'M', font:{size:10} } }
+    }
+  }
+});
+
+// ── 9. DIAGNOSIS TABLE ────────────────────────────────────────
+const tbody = document.getElementById('diagTable');
+DIAG.forEach(r => {
+  const rTag = r.r >= 25 ? 'tag-red' : r.r >= 20 ? 'tag-amber' : 'tag-green';
+  const mTag = r.m >= 10 ? 'tag-red' : r.m >= 5 ? 'tag-amber' : 'tag-blue';
+  const sevFill = Array.from({length:5},(_, i)=>`<div class="sev-dot${i<Math.round(r.sev)?` fill-${Math.round(r.sev)}`:''}" ></div>`).join('');
+  tbody.innerHTML += `
+    <tr>
+      <td style="font-weight:600;font-size:12px">${r.d}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${r.c}</td>
+      <td style="font-family:'JetBrains Mono',monospace">$${r.cost.toLocaleString()}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${r.los}d</td>
+      <td><span class="tag ${rTag}">${r.r}%</span></td>
+      <td><div class="sev-bar">${sevFill}</div></td>
+      <td><span class="tag ${mTag}">${r.m}%</span></td>
+    </tr>`;
+});
+</script>
+</body>
+</html>
